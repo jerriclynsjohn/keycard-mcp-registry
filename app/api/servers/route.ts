@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
       version: server.version, // actual version from database
       websiteUrl: server.documentationUrl || server.maintainerUrl || undefined,
       icons: server.iconUrl ? [{ src: server.iconUrl }] : undefined,
-      remotes: server.remotes?.length > 0 ? server.remotes.map(r => ({ type: r.type, url: r.url })) : (server.mcpUrl ? [{ type: "streamable-http", url: server.mcpUrl }] : undefined),
-      packages: server.packages?.length > 0 ? server.packages.map(p => ({ transport: p.transport })) : undefined,
+      remotes: server.remotes?.length > 0 ? server.remotes.map((r: any) => ({ type: r.type, url: r.url })) : (server.mcpUrl ? [{ type: "streamable-http", url: server.mcpUrl }] : undefined),
+      packages: server.packages?.length > 0 ? server.packages.map((p: any) => ({ transport: p.transport })) : undefined,
       _meta: {
         "io.modelcontextprotocol.registry/publisher-provided": {
           maintainerName: server.maintainerName,
