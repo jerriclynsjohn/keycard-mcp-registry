@@ -1,14 +1,98 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
-
 datasource db {
   provider = "postgresql"
+}
+model User {
+  id        String   @id @default(ulid()) // ULID
+  email     String?  @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  servers    McpServer[]
+  reviews    Review[]
+
+  // Better Auth fields
+  emailVerified Boolean? @default(false)
+
+  // Better Auth relations
+  sessions Session[]
+  accounts Account[]
+}
+model McpServer {
+  id        String   @id @default(ulid()) // ULID for internal use
+  name      String   @unique // Server name like "ai.smithery/222wcnmibilistalkermcp" - exposed identifier
+  description String?
+  category    String?
+  maintainerName String?
+  maintainerUrl String?
+  mcpUrl     String
+  documentationUrl String?
+  iconUrl    String?
+  authenticationType String?
+  dynamicClientRegistration Boolean? @default(false)
+  isOfficial Boolean? @default(false)
+  status     String  @default("pending") // pending, approved, rejected
+  averageRating Float?
+  aiSummary  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id])
+  reviews   Review[]
+}
+model Review {
+  id        String   @id @default(ulid()) // ULID
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  serverId String
+  server   McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  // For anonymous reviews (optional, if allowing anonymous ratings)
+  anonymousId String?
+}
+model Session {
+  id        String   @id @default(ulid()) // ULID
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model Account {
+  id                String  @id @default(ulid()) // ULID
+  userId            String
+  accountId          String
+  providerId         String
+  accessToken        String?
+  refreshToken       String?
+  accessTokenExpiresAt DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope              String?
+  idToken            String?
+  password           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model Verification {
+  id         String   @id @default(ulid()) // ULID
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
