@@ -57,6 +57,8 @@ export default function ServerDetailsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchServer = async () => {
+    if (!params.id) return;
+
     try {
       setLoading(true);
       const id = Array.isArray(params.id) ? params.id.join("/") : params.id;
