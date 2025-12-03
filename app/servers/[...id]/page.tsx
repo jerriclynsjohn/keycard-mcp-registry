@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Star, ArrowLeft } from "lucide-react";
 import { KeycardLogo } from "@/components/keycard-logo";
+import { ReviewDialog } from "@/components/auth/user-profile";
 
 interface ServerDetails {
   server: {
@@ -296,6 +297,12 @@ export default function ServerDetailsPage() {
                     ))}
                   </div>
                 )}
+                <div className="mt-6 pt-4 border-t border-border/40">
+                  <ReviewDialog
+                    serverId={server.server.name}
+                    onReviewSubmitted={fetchServer}
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>
