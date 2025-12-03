@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { KeycardLogo } from "@/components/keycard-logo";
 
 interface Server {
   server: {
@@ -67,20 +68,52 @@ export default function ServersPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b">
+      <header className="border-b border-border/40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold">
-            MCP Subregistry
-          </Link>
-          <nav className="flex items-center gap-4">
-            <span className="text-sm font-medium text-muted-foreground">
-              MCP Servers
-            </span>
-          </nav>
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center">
+              <KeycardLogo />
+            </Link>
+            <nav className="hidden md:flex items-center gap-6">
+              <Link href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                MCP Registry
+              </Link>
+             
+            </nav>
+          </div>
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" className="hidden md:flex">
+              Get Early Access
+            </Button>
+          </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
+      {/* Hero Section */}
+      <section className="py-20 px-4">
+        <div className="container mx-auto text-center">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Discover MCP Servers
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Find and review Model Context Protocol servers for your applications. Browse featured servers, read reviews, and discover new tools with Keycard's MCP Registry.
+          </p>
+           <Button
+             size="lg"
+             className="mb-12"
+             onClick={() => {
+               const serversSection = document.getElementById('servers-section');
+               if (serversSection) {
+                 serversSection.scrollIntoView({ behavior: 'smooth' });
+               }
+             }}
+           >
+             Explore Servers
+           </Button>
+        </div>
+      </section>
+
+      <div id="servers-section" className="container mx-auto px-4 py-8">
         <div className="flex flex-col gap-6">
 
           {/* Results Count */}
@@ -121,7 +154,7 @@ export default function ServersPage() {
                           {item._meta["io.modelcontextprotocol.registry/official"].status}
                         </Badge>
                       </div>
-                      <Button asChild className="w-full">
+                      <Button asChild className="w-full" variant="outline">
                         <Link href={`/servers/${item.server.name.replace("/", "%2F")}`}>
                           View Details
                         </Link>

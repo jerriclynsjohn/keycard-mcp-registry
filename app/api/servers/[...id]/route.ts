@@ -3,7 +3,7 @@ import { prisma } from "@/lib/server/db";
 import { auth } from "@/lib/server/auth";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string[] }> }
 ) {
   const params = await context.params;
