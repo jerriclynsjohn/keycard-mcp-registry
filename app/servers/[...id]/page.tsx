@@ -59,7 +59,7 @@ export default function ServerDetailsPage() {
   const fetchServer = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/servers/${params.id}`);
+      const response = await fetch(`/api/servers/${encodeURIComponent(params.id.join("/"))}`);
       if (!response.ok) {
         throw new Error("Server not found");
       }

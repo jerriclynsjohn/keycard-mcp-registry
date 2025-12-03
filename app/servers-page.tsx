@@ -154,11 +154,11 @@ export default function ServersPage() {
                           {item._meta["io.modelcontextprotocol.registry/official"].status}
                         </Badge>
                       </div>
-                      <Button asChild className="w-full" variant="outline">
-                        <Link href={`/servers/${item.server.name.replace("/", "%2F")}`}>
-                          View Details
-                        </Link>
-                      </Button>
+                       <Button asChild className="w-full" variant="outline">
+                         <Link href={`/servers/${encodeURIComponent(item.server.name)}`}>
+                           View Details
+                         </Link>
+                       </Button>
                     </CardContent>
                   </Card>
                 ))}
