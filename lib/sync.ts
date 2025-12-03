@@ -217,7 +217,7 @@ async function syncPackage(pkg: PackageData, serverId: string) {
         serverId,
         registryType: pkg.registryType,
         identifier: pkg.identifier,
-        version: pkg.version,
+        version: pkg.version!,
       },
     },
     update: packageData,
