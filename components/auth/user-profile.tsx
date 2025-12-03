@@ -17,7 +17,17 @@ import { Label } from "@/components/ui/label";
 import { Star } from "lucide-react";
 
 export function UserProfile() {
+  const [mounted, setMounted] = useState(false);
   const { data: session, isPending } = authClient.useSession();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Don't render during SSR
+  if (typeof window === 'undefined' || !mounted) {
+    return <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />;
+  }
 
   if (isPending) {
     return <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />;
@@ -69,11 +79,17 @@ interface ReviewDialogProps {
 }
 
 export function ReviewDialog({ serverId, onReviewSubmitted }: ReviewDialogProps) {
-  const { data: session } = authClient.useSession();
+  const [mounted, setMounted] = useState(false);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const { data: session } = authClient.useSession();
 
   // Auto-open dialog after authentication
   useEffect(() => {
@@ -82,6 +98,15 @@ export function ReviewDialog({ serverId, onReviewSubmitted }: ReviewDialogProps)
       setIsOpen(true);
     }
   }, [session]);
+
+  // Don't render during SSR
+  if (typeof window === 'undefined' || !mounted) {
+    return (
+      <Button variant="outline">
+        Sign in to Review
+      </Button>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

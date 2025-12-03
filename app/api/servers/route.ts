@@ -9,19 +9,29 @@ export async function GET(request: NextRequest) {
 
 
   // Get latest version for each server name
-  const latestServers = await prisma.$queryRaw`
-    SELECT DISTINCT ON (name) * FROM "McpServer"
-    ORDER BY name, "updatedAt" DESC
-  `;
+  const allServers = await prisma.mcpServer.findMany({
+    orderBy: [
+      { name: 'asc' },
+      { updatedAt: 'desc' }
+    ]
+  });
 
-  const allServers = Array.isArray(latestServers) ? latestServers : [];
-  const totalCount = allServers.length;
+  // Group by name and get latest for each
+  const latestServersMap = new Map();
+  for (const server of allServers) {
+    if (!latestServersMap.has(server.name)) {
+      latestServersMap.set(server.name, server);
+    }
+  }
+
+  const latestServers = Array.from(latestServersMap.values());
+  const totalCount = latestServers.length;
 
   // Simple pagination using array slicing
   const startIndex = cursor ? parseInt(cursor, 10) || 0 : 0;
   const endIndex = startIndex + limit;
-  const serversToReturn = allServers.slice(startIndex, endIndex);
-  const nextCursor = endIndex < allServers.length ? endIndex.toString() : null;
+  const serversToReturn = latestServers.slice(startIndex, endIndex);
+  const nextCursor = endIndex < latestServers.length ? endIndex.toString() : null;
 
   const transformedServers = serversToReturn.map((server) => ({
     server: {

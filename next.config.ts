@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: 'standalone', // Disable static generation to avoid SSR issues
   async headers() {
     return [
       {

@@ -25,12 +25,10 @@ export async function GET(
     versionToFind = latestServer.version;
   }
 
-  const server = await prisma.mcpServer.findUnique({
+  const server = await prisma.mcpServer.findFirst({
     where: {
-      name_version: {
-        name: serverName,
-        version: versionToFind,
-      },
+      name: serverName,
+      version: versionToFind,
     },
   });
 

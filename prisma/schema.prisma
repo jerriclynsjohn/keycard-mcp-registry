@@ -37,6 +37,11 @@ model McpServer {
   dynamicClientRegistration Boolean? @default(false)
   isOfficial Boolean? @default(false)
   status     String  @default("pending") // pending, approved, rejected
+  mcpStatus  String  @default("active") // MCP status: active, deprecated, deleted
+  websiteUrl String?
+  schema     String? // $schema URL
+  title      String? // server title
+  icons      Json?   // array of icon objects
   averageRating Float?
   aiSummary  String?
   createdAt  DateTime @default(now())
@@ -45,8 +50,82 @@ model McpServer {
   userId    String?
   user      User?     @relation(fields: [userId], references: [id])
   reviews   Review[]
+  repository Repository?
+  packages  Package[]
+  remotes   Remote[]
+  publisherMeta Json? // publisher-provided metadata
+  officialMeta Json?  // official registry metadata
 
-  @@unique([name, version]) // Unique constraint on name + version combination
+  // @@unique([name, version]) // Unique constraint on name + version combination - handled in app logic
+}
+
+model Repository {
+  id        String   @id @default(ulid())
+  url       String
+  source    String
+  repoId    String?  // id field from JSON
+  subfolder String?
+  serverId  String   @unique
+  server    McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+}
+
+model Package {
+  id                   String   @id @default(ulid())
+  registryType         String
+  registryBaseUrl      String
+  identifier           String
+  version              String
+  fileSha256           String?
+  runtimeHint          String?
+  transport            Json     // stdio, streamable-http, or sse
+  runtimeArguments     Json?    // array of arguments
+  packageArguments     Json?    // array of arguments
+  serverId             String
+  server               McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  environmentVariables EnvironmentVariable[]
+
+  @@unique([serverId, registryType, identifier, version])
+}
+
+model Remote {
+  id          String   @id @default(ulid())
+  type        String   // streamable-http or sse
+  url         String
+  serverId    String
+  server      McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  headers     Header[]
+
+  @@unique([serverId, type, url])
+}
+
+model EnvironmentVariable {
+  id          String   @id @default(ulid())
+  name        String
+  description String?
+  isRequired  Boolean  @default(false)
+  isSecret    Boolean  @default(false)
+  default     String?
+  format      String?  // string, number, boolean, filepath
+  choices     Json?    // array of strings
+  packageId   String
+  package     Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, name])
+}
+
+model Header {
+  id          String   @id @default(ulid())
+  name        String
+  description String?
+  isRequired  Boolean  @default(false)
+  isSecret    Boolean  @default(false)
+  default     String?
+  format      String?  // string, number, boolean, filepath
+  choices     Json?    // array of strings
+  remoteId    String
+  remote      Remote   @relation(fields: [remoteId], references: [id], onDelete: Cascade)
+
+  @@unique([remoteId, name])
 }
 model Review {
   id        String   @id @default(ulid()) // ULID

@@ -14,6 +14,17 @@ export async function GET(
     where: { name: id },
     orderBy: { updatedAt: "desc" }, // Get latest version
     include: {
+      repository: true,
+      packages: {
+        include: {
+          environmentVariables: true,
+        },
+      },
+      remotes: {
+        include: {
+          headers: true,
+        },
+      },
       reviews: {
         include: {
           user: {
@@ -36,15 +47,54 @@ export async function GET(
 
   const transformedServer = {
     server: {
+      $schema: server.schema,
       name: server.name,
       description: server.description || "",
-      title: server.category || undefined,
-      version: "1.0.0",
-      websiteUrl: server.documentationUrl || server.maintainerUrl || undefined,
-      icons: server.iconUrl ? [{ src: server.iconUrl }] : undefined,
-      remotes: server.mcpUrl ? [{ type: "streamable-http", url: server.mcpUrl }] : undefined,
+      title: server.title,
+      version: server.version,
+      websiteUrl: server.websiteUrl,
+      icons: server.icons || undefined,
+      repository: server.repository ? {
+        url: server.repository.url,
+        source: server.repository.source,
+        id: server.repository.repoId,
+        subfolder: server.repository.subfolder,
+      } : undefined,
+      packages: server.packages?.map(pkg => ({
+        registryType: pkg.registryType,
+        registryBaseUrl: pkg.registryBaseUrl,
+        identifier: pkg.identifier,
+        version: pkg.version,
+        fileSha256: pkg.fileSha256,
+        runtimeHint: pkg.runtimeHint,
+        transport: pkg.transport,
+        runtimeArguments: pkg.runtimeArguments,
+        packageArguments: pkg.packageArguments,
+        environmentVariables: pkg.environmentVariables?.map(env => ({
+          name: env.name,
+          description: env.description,
+          isRequired: env.isRequired,
+          isSecret: env.isSecret,
+          default: env.default,
+          format: env.format,
+          choices: env.choices,
+        })),
+      })),
+      remotes: server.remotes?.map(remote => ({
+        type: remote.type,
+        url: remote.url,
+        headers: remote.headers?.map(header => ({
+          name: header.name,
+          description: header.description,
+          isRequired: header.isRequired,
+          isSecret: header.isSecret,
+          default: header.default,
+          format: header.format,
+          choices: header.choices,
+        })),
+      })),
       _meta: {
-        "io.modelcontextprotocol.registry/publisher-provided": {
+        "io.modelcontextprotocol.registry/publisher-provided": server.publisherMeta || {
           maintainerName: server.maintainerName,
           maintainerUrl: server.maintainerUrl,
           authenticationType: server.authenticationType,
@@ -55,8 +105,8 @@ export async function GET(
       },
     },
     _meta: {
-      "io.modelcontextprotocol.registry/official": {
-        status: server.status === "approved" ? "active" : "deprecated",
+      "io.modelcontextprotocol.registry/official": server.officialMeta || {
+        status: server.mcpStatus || "active",
         publishedAt: server.createdAt.toISOString(),
         updatedAt: server.updatedAt.toISOString(),
         isLatest: true,

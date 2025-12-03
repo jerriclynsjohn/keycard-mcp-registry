@@ -1,15 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
+// Force dynamic rendering to avoid SSR issues with auth
+export const dynamic = 'force-dynamic';
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Star, ArrowLeft } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Star, ArrowLeft, Globe, Code, History } from "lucide-react";
 import { KeycardLogo } from "@/components/keycard-logo";
 import { ReviewDialog, UserProfile } from "@/components/auth/user-profile";
+import { InstallationInstructions } from "@/components/installation/InstallationInstructions";
 
 interface ServerDetails {
   server: {
@@ -19,6 +24,13 @@ interface ServerDetails {
     version: string;
     websiteUrl?: string;
     icons?: Array<{ src: string }>;
+    packages?: Array<{
+      registryType: string;
+      registryBaseUrl: string;
+      identifier: string;
+      version: string;
+      transport: any;
+    }>;
     remotes?: Array<{ type: string; url: string }>;
     _meta: {
       "io.modelcontextprotocol.registry/publisher-provided": {
@@ -159,7 +171,7 @@ export default function ServerDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Server Header */}
+            {/* Persistent Server Header */}
             <Card>
               <CardHeader>
                 <div className="flex items-start gap-4">
@@ -181,79 +193,172 @@ export default function ServerDetailsPage() {
                     <CardDescription className="text-base mb-4">
                       {server.server.description}
                     </CardDescription>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                       <span>Version {server.server.version}</span>
                       <Badge variant="secondary">
                         {server._meta["io.modelcontextprotocol.registry/official"].status}
                       </Badge>
+                    </div>
+
+                    {/* Server Information Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium mb-1 text-sm">Name</h4>
+                        <p className="text-sm text-muted-foreground font-mono">{server.server.name}</p>
+                      </div>
+
+                      {server.server.websiteUrl && (
+                        <div>
+                          <h4 className="font-medium mb-1 text-sm">Website</h4>
+                          <a
+                            href={server.server.websiteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline"
+                          >
+                            {server.server.websiteUrl}
+                          </a>
+                        </div>
+                      )}
+
+                      {server.server.remotes?.[0] && (
+                        <div>
+                          <h4 className="font-medium mb-1 text-sm">MCP URL</h4>
+                          <p className="text-sm text-muted-foreground font-mono break-all">
+                            {server.server.remotes[0].url}
+                          </p>
+                        </div>
+                      )}
+
+                      {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].maintainerName && (
+                        <div>
+                          <h4 className="font-medium mb-1 text-sm">Maintainer</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].maintainerName}
+                          </p>
+                        </div>
+                      )}
+
+                      {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].category && (
+                        <div>
+                          <h4 className="font-medium mb-1 text-sm">Category</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].category}
+                          </p>
+                        </div>
+                      )}
+
+                      {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].aiSummary && (
+                        <div className="md:col-span-2">
+                          <h4 className="font-medium mb-1 text-sm">AI Summary</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].aiSummary}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </CardHeader>
             </Card>
 
-            {/* Server Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Server Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-1">Name</h4>
-                  <p className="text-sm text-muted-foreground font-mono">{server.server.name}</p>
-                </div>
+            {/* Tabs */}
+            <Tabs defaultValue="installation" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="installation" className="flex items-center gap-2">
+                  <Code className="h-4 w-4" />
+                  Installation
+                </TabsTrigger>
+                <TabsTrigger value="details" className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  Details
+                </TabsTrigger>
+                <TabsTrigger value="versions" className="flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  Versions
+                </TabsTrigger>
+              </TabsList>
 
-                {server.server.websiteUrl && (
-                  <div>
-                    <h4 className="font-medium mb-1">Website</h4>
-                    <a
-                      href={server.server.websiteUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline"
-                    >
-                      {server.server.websiteUrl}
-                    </a>
-                  </div>
-                )}
+              <TabsContent value="installation" className="mt-6">
+                <InstallationInstructions server={server.server} />
+              </TabsContent>
 
-                {server.server.remotes?.[0] && (
-                  <div>
-                    <h4 className="font-medium mb-1">MCP URL</h4>
-                    <p className="text-sm text-muted-foreground font-mono break-all">
-                      {server.server.remotes[0].url}
-                    </p>
-                  </div>
-                )}
+              <TabsContent value="details" className="mt-6 space-y-6">
+                
+                {/* Technical Details */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Technical Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-medium mb-2">Transport Types</h4>
+                        <div className="flex gap-2">
+                          {server.server.remotes?.map((remote, index) => (
+                            <Badge key={index} variant="outline">
+                              {remote.type}
+                            </Badge>
+                          ))}
+                          {server.server.packages?.map((pkg, index) => (
+                            <Badge key={index} variant="outline">
+                              {pkg.transport?.type || 'stdio'}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
 
-                {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].maintainerName && (
-                  <div>
-                    <h4 className="font-medium mb-1">Maintainer</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].maintainerName}
-                    </p>
-                  </div>
-                )}
+                      {server.server.packages && server.server.packages.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-2">Packages</h4>
+                          <div className="space-y-2">
+                            {server.server.packages.map((pkg, index) => (
+                              <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
+                                <Badge variant="secondary">{pkg.registryType}</Badge>
+                                <code className="text-sm">{pkg.identifier}@{pkg.version}</code>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].category && (
-                  <div>
-                    <h4 className="font-medium mb-1">Category</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].category}
-                    </p>
-                  </div>
-                )}
+                      <div>
+                        <h4 className="font-medium mb-2">Metadata</h4>
+                        <div className="text-sm space-y-1">
+                          <p><strong>Published:</strong> {new Date(server._meta["io.modelcontextprotocol.registry/official"].publishedAt).toLocaleDateString()}</p>
+                          <p><strong>Updated:</strong> {new Date(server._meta["io.modelcontextprotocol.registry/official"].updatedAt).toLocaleDateString()}</p>
+                          <p><strong>Status:</strong> {server._meta["io.modelcontextprotocol.registry/official"].status}</p>
+                          <p><strong>Is Latest:</strong> {server._meta["io.modelcontextprotocol.registry/official"].isLatest ? 'Yes' : 'No'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].aiSummary && (
-                  <div>
-                    <h4 className="font-medium mb-1">AI Summary</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {server.server._meta["io.modelcontextprotocol.registry/publisher-provided"].aiSummary}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              <TabsContent value="versions" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Version History</CardTitle>
+                    <CardDescription>
+                      All available versions of this MCP server
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground mb-4">
+                        Version history will be available soon. For now, only the latest version is shown.
+                      </p>
+                      <Button variant="outline" disabled>
+                        Load Version History
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            
 
             {/* Reviews */}
             <Card>
