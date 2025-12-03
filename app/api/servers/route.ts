@@ -10,6 +10,10 @@ export async function GET(request: NextRequest) {
 
   // Get latest version for each server name
   const allServers = await prisma.mcpServer.findMany({
+    include: {
+      packages: true,
+      remotes: true,
+    },
     orderBy: [
       { name: 'asc' },
       { updatedAt: 'desc' }
@@ -41,7 +45,8 @@ export async function GET(request: NextRequest) {
       version: server.version, // actual version from database
       websiteUrl: server.documentationUrl || server.maintainerUrl || undefined,
       icons: server.iconUrl ? [{ src: server.iconUrl }] : undefined,
-      remotes: server.mcpUrl ? [{ type: "streamable-http", url: server.mcpUrl }] : undefined,
+      remotes: server.remotes?.length > 0 ? server.remotes.map(r => ({ type: r.type, url: r.url })) : (server.mcpUrl ? [{ type: "streamable-http", url: server.mcpUrl }] : undefined),
+      packages: server.packages?.length > 0 ? server.packages.map(p => ({ transport: p.transport })) : undefined,
       _meta: {
         "io.modelcontextprotocol.registry/publisher-provided": {
           maintainerName: server.maintainerName,

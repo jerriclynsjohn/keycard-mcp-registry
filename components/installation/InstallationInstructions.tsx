@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Check } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Copy, Check, AlertCircle } from "lucide-react";
 
 interface InstallationInstructionsProps {
   server: {
@@ -42,165 +43,59 @@ export function InstallationInstructions({ server }: InstallationInstructionsPro
 
   const transportType = getTransportType();
 
-  const renderGenericInstructions = () => {
-    switch (transportType) {
-      case 'stdio':
-        return (
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-2">Package Installation</h4>
-              <p className="text-sm text-muted-foreground mb-3">
-                Install the package using your preferred package manager:
-              </p>
-              {server.packages?.map((pkg, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{pkg.registryType}</Badge>
-                    <code className="text-sm bg-muted px-2 py-1 rounded">
-                      {pkg.identifier}@{pkg.version}
-                    </code>
-                  </div>
-                  {pkg.registryType === 'npm' && (
-                    <div className="flex items-center gap-2">
-                      <code className="text-sm bg-muted px-2 py-1 rounded flex-1">
-                        npm install {pkg.identifier}@{pkg.version}
-                      </code>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copyToClipboard(`npm install ${pkg.identifier}@{pkg.version}`, 'npm install')}
-                      >
-                        {copiedText === 'npm install' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  )}
-                  {pkg.registryType === 'pypi' && (
-                    <div className="flex items-center gap-2">
-                      <code className="text-sm bg-muted px-2 py-1 rounded flex-1">
-                        pip install {pkg.identifier}=={pkg.version}
-                      </code>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copyToClipboard(`pip install ${pkg.identifier}==${pkg.version}`, 'pip install')}
-                      >
-                        {copiedText === 'pip install' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">Environment Variables</h4>
-              <p className="text-sm text-muted-foreground">
-                Set the following environment variables if required:
-              </p>
-              {server.packages?.flatMap(pkg => pkg.environmentVariables || []).map((env: any, index: number) => (
-                <div key={index} className="mt-2">
-                  <div className="flex items-center gap-2">
-                    <code className="text-sm bg-muted px-2 py-1 rounded">
-                      {env.name}={env.default || 'YOUR_VALUE'}
-                    </code>
-                    {env.isRequired && <Badge variant="destructive">Required</Badge>}
-                    {env.isSecret && <Badge variant="secondary">Secret</Badge>}
-                  </div>
-                  {env.description && (
-                    <p className="text-xs text-muted-foreground mt-1">{env.description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
 
-      case 'streamable-http':
-      case 'sse':
-        const remote = server.remotes?.find(r => r.type === transportType);
-        return (
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-2">Remote Connection</h4>
-              <p className="text-sm text-muted-foreground mb-3">
-                Connect to the remote MCP server using {transportType.toUpperCase()}:
-              </p>
-              <div className="flex items-center gap-2">
-                <code className="text-sm bg-muted px-2 py-1 rounded flex-1">
-                  {remote?.url}
-                </code>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => copyToClipboard(remote?.url || '', 'server URL')}
-                >
-                  {copiedText === 'server URL' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-            {remote?.headers && remote.headers.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">Authentication Headers</h4>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Include these headers in your requests:
-                </p>
-                {remote.headers.map((header: any, index: number) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <code className="text-sm bg-muted px-2 py-1 rounded">
-                        {header.name}: {header.default || 'YOUR_VALUE'}
-                      </code>
-                      {header.isRequired && <Badge variant="destructive">Required</Badge>}
-                      {header.isSecret && <Badge variant="secondary">Secret</Badge>}
-                    </div>
-                    {header.description && (
-                      <p className="text-xs text-muted-foreground">{header.description}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-
-      default:
-        return (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Installation instructions not available for this server type.</p>
-          </div>
-        );
-    }
-  };
 
   const renderClientInstructions = (client: string) => {
     const getClientConfig = () => {
+      const serverKey = server.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+
       switch (client) {
         case 'claude-desktop':
           if (transportType === 'stdio') {
+            const pkg = server.packages?.[0];
+            const command = pkg?.runtimeHint || 'npx';
+            const args = pkg?.runtimeHint === 'npx' 
+              ? [pkg?.identifier, ...(pkg?.packageArguments || []).map((arg: any) => arg.value || arg)]
+              : [pkg?.identifier, ...(pkg?.packageArguments || []).map((arg: any) => arg.value || arg)].filter(Boolean);
+            
             return {
               file: '~/Library/Application Support/Claude/claude_desktop_config.json',
+              instructions: [
+                '1. Open Claude Desktop',
+                '2. Go to Settings → Developer → Edit Config',
+                '3. Add the server configuration to the mcpServers object'
+              ],
               config: {
                 mcpServers: {
-                  [server.name.replace('/', '_')]: {
-                    command: server.packages?.[0]?.identifier || 'npx',
-                    args: server.packages?.[0]?.packageArguments?.map((arg: any) => arg.value) || [],
-                    env: server.packages?.[0]?.environmentVariables?.reduce((acc: any, env: any) => {
-                      acc[env.name] = env.default || process.env[env.name];
-                      return acc;
-                    }, {}) || {}
+                  [serverKey]: {
+                    command,
+                    args,
+                    ...(pkg?.environmentVariables && pkg.environmentVariables.length > 0 && {
+                      env: pkg.environmentVariables.reduce((acc: any, env: any) => {
+                        acc[env.name] = env.default || `YOUR_${env.name}`;
+                        return acc;
+                      }, {})
+                    })
                   }
                 }
               }
             };
           } else {
+            const remote = server.remotes?.find(r => r.type === transportType);
             return {
               file: '~/Library/Application Support/Claude/claude_desktop_config.json',
+              instructions: [
+                '1. Open Claude Desktop',
+                '2. Go to Settings → Developer → Edit Config',
+                '3. Add the server configuration to the mcpServers object'
+              ],
               config: {
                 mcpServers: {
-                  [server.name.replace('/', '_')]: {
+                  [serverKey]: {
                     type: transportType,
-                    url: server.remotes?.[0]?.url,
-                    headers: server.remotes?.[0]?.headers?.reduce((acc: any, header: any) => {
-                      acc[header.name] = header.default;
+                    url: remote?.url,
+                    headers: remote?.headers?.reduce((acc: any, header: any) => {
+                      acc[header.name] = header.default || `YOUR_${header.name}`;
                       return acc;
                     }, {})
                   }
@@ -211,31 +106,50 @@ export function InstallationInstructions({ server }: InstallationInstructionsPro
 
         case 'vscode':
           if (transportType === 'stdio') {
+            const pkg = server.packages?.[0];
+            const command = pkg?.runtimeHint || 'npx';
+            const args = pkg?.runtimeHint === 'npx' 
+              ? [pkg?.identifier, ...(pkg?.packageArguments || []).map((arg: any) => arg.value || arg)]
+              : [pkg?.identifier, ...(pkg?.packageArguments || []).map((arg: any) => arg.value || arg)].filter(Boolean);
+            
             return {
               file: '.vscode/mcp.json',
+              instructions: [
+                '1. Create .vscode/mcp.json in your workspace root',
+                '2. Add the server configuration',
+                '3. Reload VS Code window'
+              ],
               config: {
                 servers: {
-                  [server.name.replace('/', '_')]: {
-                    command: server.packages?.[0]?.identifier || 'npx',
-                    args: server.packages?.[0]?.packageArguments?.map((arg: any) => arg.value) || [],
-                    env: server.packages?.[0]?.environmentVariables?.reduce((acc: any, env: any) => {
-                      acc[env.name] = env.default || process.env[env.name];
-                      return acc;
-                    }, {}) || {}
+                  [serverKey]: {
+                    command,
+                    args,
+                    ...(pkg?.environmentVariables && pkg.environmentVariables.length > 0 && {
+                      env: pkg.environmentVariables.reduce((acc: any, env: any) => {
+                        acc[env.name] = env.default || `YOUR_${env.name}`;
+                        return acc;
+                      }, {})
+                    })
                   }
                 }
               }
             };
           } else {
+            const remote = server.remotes?.find(r => r.type === transportType);
             return {
               file: '.vscode/mcp.json',
+              instructions: [
+                '1. Create .vscode/mcp.json in your workspace root',
+                '2. Add the server configuration',
+                '3. Reload VS Code window'
+              ],
               config: {
                 servers: {
-                  [server.name.replace('/', '_')]: {
+                  [serverKey]: {
                     type: transportType,
-                    url: server.remotes?.[0]?.url,
-                    headers: server.remotes?.[0]?.headers?.reduce((acc: any, header: any) => {
-                      acc[header.name] = header.default;
+                    url: remote?.url,
+                    headers: remote?.headers?.reduce((acc: any, header: any) => {
+                      acc[header.name] = header.default || `YOUR_${header.name}`;
                       return acc;
                     }, {})
                   }
@@ -245,32 +159,112 @@ export function InstallationInstructions({ server }: InstallationInstructionsPro
           }
 
         case 'cursor':
-          return {
-            file: '.cursor/mcp.json',
-            config: transportType === 'stdio' ? {
-              mcpServers: {
-                [server.name.replace('/', '_')]: {
-                  command: server.packages?.[0]?.identifier || 'npx',
-                  args: server.packages?.[0]?.packageArguments?.map((arg: any) => arg.value) || [],
-                  env: server.packages?.[0]?.environmentVariables?.reduce((acc: any, env: any) => {
-                    acc[env.name] = env.default || process.env[env.name];
-                    return acc;
-                  }, {}) || {}
+          if (transportType === 'stdio') {
+            const pkg = server.packages?.[0];
+            const command = pkg?.runtimeHint || 'npx';
+            const args = pkg?.runtimeHint === 'npx' 
+              ? [pkg?.identifier, ...(pkg?.packageArguments || []).map((arg: any) => arg.value || arg)]
+              : [pkg?.identifier, ...(pkg?.packageArguments || []).map((arg: any) => arg.value || arg)].filter(Boolean);
+            
+            return {
+              file: '.cursor/mcp.json',
+              instructions: [
+                '1. Create .cursor/mcp.json in your workspace root',
+                '2. Add the server configuration',
+                '3. Reload Cursor window'
+              ],
+              config: {
+                mcpServers: {
+                  [serverKey]: {
+                    command,
+                    args,
+                    ...(pkg?.environmentVariables && pkg.environmentVariables.length > 0 && {
+                      env: pkg.environmentVariables.reduce((acc: any, env: any) => {
+                        acc[env.name] = env.default || `YOUR_${env.name}`;
+                        return acc;
+                      }, {})
+                    })
+                  }
                 }
               }
-            } : {
-              mcpServers: {
-                [server.name.replace('/', '_')]: {
-                  type: transportType,
-                  url: server.remotes?.[0]?.url,
-                  headers: server.remotes?.[0]?.headers?.reduce((acc: any, header: any) => {
-                    acc[header.name] = header.default;
-                    return acc;
-                  }, {})
+            };
+          } else {
+            const remote = server.remotes?.find(r => r.type === transportType);
+            return {
+              file: '.cursor/mcp.json',
+              instructions: [
+                '1. Create .cursor/mcp.json in your workspace root',
+                '2. Add the server configuration',
+                '3. Reload Cursor window'
+              ],
+              config: {
+                mcpServers: {
+                  [serverKey]: {
+                    type: transportType,
+                    url: remote?.url,
+                    headers: remote?.headers?.reduce((acc: any, header: any) => {
+                      acc[header.name] = header.default || `YOUR_${header.name}`;
+                      return acc;
+                    }, {})
+                  }
                 }
               }
-            }
-          };
+            };
+          }
+
+        case 'lm-studio':
+          if (transportType === 'stdio') {
+            const pkg = server.packages?.[0];
+            const command = pkg?.runtimeHint || 'npx';
+            const args = pkg?.runtimeHint === 'npx' 
+              ? [pkg?.identifier, ...(pkg?.packageArguments || []).map((arg: any) => arg.value || arg)]
+              : [pkg?.identifier, ...(pkg?.packageArguments || []).map((arg: any) => arg.value || arg)].filter(Boolean);
+            
+            return {
+              file: 'mcp.json',
+              instructions: [
+                '1. Open LM Studio',
+                '2. Go to Local Server → Chat Settings → MCP',
+                '3. Add the server configuration'
+              ],
+              config: {
+                mcpServers: {
+                  [serverKey]: {
+                    command,
+                    args,
+                    ...(pkg?.environmentVariables && pkg.environmentVariables.length > 0 && {
+                      env: pkg.environmentVariables.reduce((acc: any, env: any) => {
+                        acc[env.name] = env.default || `YOUR_${env.name}`;
+                        return acc;
+                      }, {})
+                    })
+                  }
+                }
+              }
+            };
+          } else {
+            const remote = server.remotes?.find(r => r.type === transportType);
+            return {
+              file: 'mcp.json',
+              instructions: [
+                '1. Open LM Studio',
+                '2. Go to Local Server → Chat Settings → MCP',
+                '3. Add the server configuration'
+              ],
+              config: {
+                mcpServers: {
+                  [serverKey]: {
+                    type: transportType,
+                    url: remote?.url,
+                    headers: remote?.headers?.reduce((acc: any, header: any) => {
+                      acc[header.name] = header.default || `YOUR_${header.name}`;
+                      return acc;
+                    }, {})
+                  }
+                }
+              }
+            };
+          }
 
         default:
           return null;
@@ -285,11 +279,22 @@ export function InstallationInstructions({ server }: InstallationInstructionsPro
     return (
       <div className="space-y-4">
         <div>
-          <h4 className="font-medium mb-2">Configuration File</h4>
+          <h4 className="font-medium mb-2">Setup Instructions for {client.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</h4>
+          <div className="space-y-1 mb-4">
+            {clientConfig.instructions.map((instruction, index) => (
+              <p key={index} className="text-sm text-muted-foreground">
+                {instruction}
+              </p>
+            ))}
+          </div>
+        </div>
+
+        <div>
           <p className="text-sm text-muted-foreground mb-3">
-            Add the following configuration to <code className="bg-muted px-1 rounded">{clientConfig.file}</code>:
+            Configuration file: <code className="bg-muted px-1 rounded">{clientConfig.file}</code>
           </p>
         </div>
+
         <div className="relative">
           <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto">
             <code>{configJson}</code>
@@ -303,9 +308,13 @@ export function InstallationInstructions({ server }: InstallationInstructionsPro
             {copiedText === `${client} config` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           </Button>
         </div>
-        <div className="text-sm text-muted-foreground">
-          <p><strong>Note:</strong> Replace placeholder values with your actual configuration.</p>
-        </div>
+
+        <Alert>
+          <AlertCircle />
+          <AlertDescription>
+            <strong>Important:</strong> Replace placeholder values (like YOUR_API_KEY) with your actual configuration values.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   };
@@ -322,18 +331,13 @@ export function InstallationInstructions({ server }: InstallationInstructionsPro
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="generic" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="generic">Generic</TabsTrigger>
-            <TabsTrigger value="claude-desktop">Claude Desktop</TabsTrigger>
+        <Tabs defaultValue="claude-desktop" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="claude-desktop">Claude</TabsTrigger>
             <TabsTrigger value="vscode">VS Code</TabsTrigger>
             <TabsTrigger value="cursor">Cursor</TabsTrigger>
-            <TabsTrigger value="other">Other</TabsTrigger>
+            <TabsTrigger value="lm-studio">LM Studio</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="generic" className="mt-4">
-            {renderGenericInstructions()}
-          </TabsContent>
 
           <TabsContent value="claude-desktop" className="mt-4">
             {renderClientInstructions('claude-desktop')}
@@ -347,15 +351,8 @@ export function InstallationInstructions({ server }: InstallationInstructionsPro
             {renderClientInstructions('cursor')}
           </TabsContent>
 
-          <TabsContent value="other" className="mt-4">
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">
-                Installation instructions for other MCP clients will be added soon.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Check the official MCP documentation for client-specific setup guides.
-              </p>
-            </div>
+          <TabsContent value="lm-studio" className="mt-4">
+            {renderClientInstructions('lm-studio')}
           </TabsContent>
         </Tabs>
       </CardContent>

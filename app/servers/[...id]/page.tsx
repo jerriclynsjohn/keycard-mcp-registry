@@ -11,10 +11,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, ArrowLeft, Globe, Code, History } from "lucide-react";
+import { Star, ArrowLeft, Globe, Code, History, Copy, Check, Package } from "lucide-react";
 import { KeycardLogo } from "@/components/keycard-logo";
 import { ReviewDialog, UserProfile } from "@/components/auth/user-profile";
 import { InstallationInstructions } from "@/components/installation/InstallationInstructions";
+import { VersionsTab } from "@/components/VersionsTab";
+import { PackageDetails } from "@/components/PackageDetails";
+import { RemoteDetails } from "@/components/RemoteDetails";
+import { RepositoryDetails } from "@/components/RepositoryDetails";
 
 interface ServerDetails {
   server: {
@@ -24,6 +28,12 @@ interface ServerDetails {
     version: string;
     websiteUrl?: string;
     icons?: Array<{ src: string }>;
+    repository?: {
+      url: string;
+      source: string;
+      id?: string;
+      subfolder?: string;
+    };
     packages?: Array<{
       registryType: string;
       registryBaseUrl: string;
@@ -68,6 +78,7 @@ export default function ServerDetailsPage() {
   const [server, setServer] = useState<ServerDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copiedConfig, setCopiedConfig] = useState(false);
 
   const fetchServer = async () => {
     if (!params.id) return;
@@ -132,6 +143,59 @@ export default function ServerDetailsPage() {
       ? server.reviews.reduce((sum, review) => sum + review.rating, 0) / server.reviews.length
       : 0;
 
+  const copyConfig = async () => {
+    const serverKey = server.server.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const pkg = server.server.packages?.[0];
+    const remote = server.server.remotes?.[0];
+    
+    let config: any = {};
+    
+    if (pkg) {
+      const command = pkg.runtimeHint || 'npx';
+      const args = command === 'npx' 
+        ? [pkg.identifier, ...(pkg.packageArguments || []).map((arg: any) => arg.value || arg)]
+        : [pkg.identifier, ...(pkg.packageArguments || []).map((arg: any) => arg.value || arg)].filter(Boolean);
+      
+      config = {
+        mcpServers: {
+          [serverKey]: {
+            command,
+            args,
+            ...(pkg.environmentVariables && pkg.environmentVariables.length > 0 && {
+              env: pkg.environmentVariables.reduce((acc: any, env: any) => {
+                acc[env.name] = env.default || `YOUR_${env.name}`;
+                return acc;
+              }, {})
+            })
+          }
+        }
+      };
+    } else if (remote) {
+      config = {
+        mcpServers: {
+          [serverKey]: {
+            type: remote.type,
+            url: remote.url,
+            ...(remote.headers && remote.headers.length > 0 && {
+              headers: remote.headers.reduce((acc: any, header: any) => {
+                acc[header.name] = header.default || `YOUR_${header.name}`;
+                return acc;
+              }, {})
+            })
+          }
+        }
+      };
+    }
+    
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+      setCopiedConfig(true);
+      setTimeout(() => setCopiedConfig(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy config:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -193,11 +257,34 @@ export default function ServerDetailsPage() {
                     <CardDescription className="text-base mb-4">
                       {server.server.description}
                     </CardDescription>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                      <span>Version {server.server.version}</span>
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
                       <Badge variant="secondary">
                         {server._meta["io.modelcontextprotocol.registry/official"].status}
                       </Badge>
+                      <span className="text-sm text-muted-foreground">•</span>
+                      <span className="text-sm text-muted-foreground">v{server.server.version}</span>
+                      <span className="text-sm text-muted-foreground">•</span>
+                      {(() => {
+                        const transportTypes = new Set<string>();
+                        
+                        // Collect transport types from remotes
+                        server.server.remotes?.forEach(remote => {
+                          transportTypes.add(remote.type);
+                        });
+                        
+                        // Collect transport types from packages
+                        server.server.packages?.forEach(pkg => {
+                          const transport = typeof pkg.transport === 'object' ? pkg.transport.type : pkg.transport;
+                          transportTypes.add(transport || 'stdio');
+                        });
+                        
+                        return Array.from(transportTypes).map(type => (
+                          <Badge key={type} variant="outline" className="flex items-center gap-1">
+                            {type === 'stdio' ? <Package className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                            {type}
+                          </Badge>
+                        ));
+                      })()}
                     </div>
 
                     {/* Server Information Grid */}
@@ -285,51 +372,58 @@ export default function ServerDetailsPage() {
 
               <TabsContent value="details" className="mt-6 space-y-6">
                 
-                {/* Technical Details */}
+
+                {/* Repository Information - Only show if repository data exists */}
+                {server.server.repository && (
+                  <RepositoryDetails repository={server.server.repository} />
+                )}
+
+                {/* Package Details - Only show if packages exist */}
+                {server.server.packages && server.server.packages.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Package Configuration</h3>
+                    <PackageDetails packages={server.server.packages} />
+                  </div>
+                )}
+
+                {/* Remote Connection Details - Only show if remotes exist */}
+                {server.server.remotes && server.server.remotes.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Remote Connections</h3>
+                    <RemoteDetails remotes={server.server.remotes} />
+                  </div>
+                )}
+
+                {/* Metadata Summary - Always show as it should always have data */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Technical Details</CardTitle>
+                    <CardTitle>Registry Metadata</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <h4 className="font-medium mb-2">Transport Types</h4>
-                        <div className="flex gap-2">
-                          {server.server.remotes?.map((remote, index) => (
-                            <Badge key={index} variant="outline">
-                              {remote.type}
-                            </Badge>
-                          ))}
-                          {server.server.packages?.map((pkg, index) => (
-                            <Badge key={index} variant="outline">
-                              {pkg.transport?.type || 'stdio'}
-                            </Badge>
-                          ))}
-                        </div>
+                        <span className="font-medium">Published:</span>
+                        <p className="text-muted-foreground">
+                          {new Date(server._meta["io.modelcontextprotocol.registry/official"].publishedAt).toLocaleDateString()}
+                        </p>
                       </div>
-
-                      {server.server.packages && server.server.packages.length > 0 && (
-                        <div>
-                          <h4 className="font-medium mb-2">Packages</h4>
-                          <div className="space-y-2">
-                            {server.server.packages.map((pkg, index) => (
-                              <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
-                                <Badge variant="secondary">{pkg.registryType}</Badge>
-                                <code className="text-sm">{pkg.identifier}@{pkg.version}</code>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
                       <div>
-                        <h4 className="font-medium mb-2">Metadata</h4>
-                        <div className="text-sm space-y-1">
-                          <p><strong>Published:</strong> {new Date(server._meta["io.modelcontextprotocol.registry/official"].publishedAt).toLocaleDateString()}</p>
-                          <p><strong>Updated:</strong> {new Date(server._meta["io.modelcontextprotocol.registry/official"].updatedAt).toLocaleDateString()}</p>
-                          <p><strong>Status:</strong> {server._meta["io.modelcontextprotocol.registry/official"].status}</p>
-                          <p><strong>Is Latest:</strong> {server._meta["io.modelcontextprotocol.registry/official"].isLatest ? 'Yes' : 'No'}</p>
-                        </div>
+                        <span className="font-medium">Last Updated:</span>
+                        <p className="text-muted-foreground">
+                          {new Date(server._meta["io.modelcontextprotocol.registry/official"].updatedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="font-medium">Status:</span>
+                        <p className="text-muted-foreground capitalize">
+                          {server._meta["io.modelcontextprotocol.registry/official"].status}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="font-medium">Version Status:</span>
+                        <p className="text-muted-foreground">
+                          {server._meta["io.modelcontextprotocol.registry/official"].isLatest ? 'Latest Version' : 'Older Version'}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -337,24 +431,7 @@ export default function ServerDetailsPage() {
               </TabsContent>
 
               <TabsContent value="versions" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Version History</CardTitle>
-                    <CardDescription>
-                      All available versions of this MCP server
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground mb-4">
-                        Version history will be available soon. For now, only the latest version is shown.
-                      </p>
-                      <Button variant="outline" disabled>
-                        Load Version History
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <VersionsTab serverName={server.server.name} />
               </TabsContent>
             </Tabs>
 
@@ -445,6 +522,14 @@ export default function ServerDetailsPage() {
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
+                <Button 
+                  className="w-full" 
+                  variant="outline"
+                  onClick={copyConfig}
+                >
+                  {copiedConfig ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                  {copiedConfig ? 'Copied!' : 'Copy Basic Config'}
+                </Button>
                 {server.server.remotes?.[0] && (
                   <Button className="w-full" variant="outline" asChild>
                     <a

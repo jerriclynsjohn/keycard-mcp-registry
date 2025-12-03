@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { KeycardLogo } from "@/components/keycard-logo";
 import { UserProfile } from "@/components/auth/user-profile";
+import { Globe, Package, Cpu, ArrowRight } from "lucide-react";
 
 interface Server {
   server: {
@@ -18,10 +19,13 @@ interface Server {
     title?: string;
     version: string;
     icons?: Array<{ src: string }>;
+    remotes?: Array<{ type: string; url: string }>;
+    packages?: Array<any>;
   };
   _meta: {
     "io.modelcontextprotocol.registry/official": {
       status: string;
+      publishedAt: string;
     };
   };
 }
@@ -164,18 +168,54 @@ export default function ServersPage() {
                         {item.server.description}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="secondary">
-                          {item._meta["io.modelcontextprotocol.registry/official"].status}
-                        </Badge>
-                      </div>
-                       <Button asChild className="w-full" variant="outline">
-                         <Link href={`/servers/${encodeURIComponent(item.server.name)}`}>
-                           View Details
-                         </Link>
-                       </Button>
-                    </CardContent>
+                     <CardContent>
+                       <div className="space-y-3">
+                         {/* Status and Transport Badges */}
+                         <div className="flex flex-wrap items-center gap-2">
+                           <Badge variant="secondary">
+                             {item._meta["io.modelcontextprotocol.registry/official"].status}
+                           </Badge>
+                           {(() => {
+                             const transportTypes = new Set<string>();
+                             
+                             // Collect transport types from remotes
+                             item.server.remotes?.forEach(remote => {
+                               transportTypes.add(remote.type);
+                             });
+                             
+                             // Collect transport types from packages
+                             item.server.packages?.forEach(pkg => {
+                               transportTypes.add(pkg.transport?.type || 'stdio');
+                             });
+                             
+                             return Array.from(transportTypes).map(type => (
+                               <Badge key={type} variant="outline" className="flex items-center gap-1">
+                                 {type === 'stdio' ? <Package className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                                 {type}
+                               </Badge>
+                             ));
+                           })()}
+                         </div>
+
+                         {/* Version and Date */}
+                         <div className="flex items-center justify-between text-xs text-muted-foreground">
+                           <span className="flex items-center gap-1">
+                             <Cpu className="h-3 w-3" />
+                             v{item.server.version}
+                           </span>
+                           <span>
+                             {new Date(item._meta["io.modelcontextprotocol.registry/official"].publishedAt).toLocaleDateString()}
+                           </span>
+                         </div>
+
+                         <Button asChild className="w-full" variant="outline">
+                           <Link href={`/servers/${encodeURIComponent(item.server.name)}`}>
+                             View Details
+                             <ArrowRight className="ml-2 h-4 w-4" />
+                           </Link>
+                         </Button>
+                       </div>
+                     </CardContent>
                   </Card>
                 ))}
               </div>

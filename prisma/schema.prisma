@@ -72,7 +72,7 @@ model Repository {
 model Package {
   id                   String   @id @default(ulid())
   registryType         String
-  registryBaseUrl      String
+  registryBaseUrl      String?
   identifier           String
   version              String
   fileSha256           String?
