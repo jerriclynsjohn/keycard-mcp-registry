@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Star, ArrowLeft } from "lucide-react";
 import { KeycardLogo } from "@/components/keycard-logo";
-import { ReviewDialog } from "@/components/auth/user-profile";
+import { ReviewDialog, UserProfile } from "@/components/auth/user-profile";
 
 interface ServerDetails {
   server: {
@@ -135,11 +135,12 @@ export default function ServerDetailsPage() {
               </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" className="hidden md:flex">
-              Get Early Access
-            </Button>
-          </div>
+           <div className="flex items-center gap-4">
+             <Button variant="outline" size="sm" className="hidden md:flex">
+               Get Early Access
+             </Button>
+             <UserProfile />
+           </div>
         </div>
       </header>
 

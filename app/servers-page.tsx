@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { KeycardLogo } from "@/components/keycard-logo";
+import { UserProfile } from "@/components/auth/user-profile";
 
 interface Server {
   server: {
@@ -81,11 +82,12 @@ export default function ServersPage() {
              
             </nav>
           </div>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" className="hidden md:flex">
-              Get Early Access
-            </Button>
-          </div>
+           <div className="flex items-center gap-4">
+             <Button variant="outline" size="sm" className="hidden md:flex">
+               Get Early Access
+             </Button>
+             <UserProfile />
+           </div>
         </div>
       </header>
 
