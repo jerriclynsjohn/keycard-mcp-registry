@@ -37,10 +37,6 @@ export default function ServersPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
-  useEffect(() => {
-    fetchServers(true);
-  }, []);
-
   const fetchServers = async (reset = false) => {
     if (reset) {
       setLoading(true);
@@ -64,6 +60,10 @@ export default function ServersPage() {
     setLoading(false);
     setLoadingMore(false);
   };
+
+  useEffect(() => {
+    fetchServers(true);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
