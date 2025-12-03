@@ -40,8 +40,31 @@ interface ServerDetails {
       identifier: string;
       version: string;
       transport: any;
+      runtimeHint?: string;
+      packageArguments?: any[];
+      environmentVariables?: Array<{
+        name: string;
+        description?: string;
+        isRequired?: boolean;
+        isSecret?: boolean;
+        default?: string;
+        format?: string;
+        choices?: string[];
+      }>;
     }>;
-    remotes?: Array<{ type: string; url: string }>;
+    remotes?: Array<{ 
+      type: string; 
+      url: string;
+      headers?: Array<{
+        name: string;
+        description?: string;
+        isRequired?: boolean;
+        isSecret?: boolean;
+        default?: string;
+        format?: string;
+        choices?: string[];
+      }>;
+    }>;
     _meta: {
       "io.modelcontextprotocol.registry/publisher-provided": {
         maintainerName?: string;
@@ -212,8 +235,10 @@ export default function ServerDetailsPage() {
             </nav>
           </div>
            <div className="flex items-center gap-4">
-             <Button variant="outline" size="sm" className="hidden md:flex">
-               Get Early Access
+             <Button variant="outline" size="sm" className="hidden md:flex" asChild>
+               <a href="https://keycard.ai" target="_blank" rel="noopener noreferrer">
+                 Get Early Access
+               </a>
              </Button>
              <UserProfile />
            </div>
