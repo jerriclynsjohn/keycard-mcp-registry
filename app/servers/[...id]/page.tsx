@@ -163,13 +163,17 @@ export default function ServerDetailsPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-start gap-4">
-                  {server.server.icons?.[0] && (
-                    <img
-                      src={server.server.icons[0].src}
-                      alt=""
-                      className="w-12 h-12 rounded-lg"
-                    />
-                  )}
+                  <img
+                    src={server.server.icons?.[0]?.src || "/mcp.png"}
+                    alt=""
+                    className="w-12 h-12 rounded-lg"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== "/mcp.png") {
+                        target.src = "/mcp.png";
+                      }
+                    }}
+                  />
                   <div className="flex-1">
                     <CardTitle className="text-2xl mb-2">
                       {server.server.title || server.server.name}

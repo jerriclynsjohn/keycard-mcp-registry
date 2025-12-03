@@ -13,6 +13,7 @@ interface Server {
     name: string;
     description: string;
     title?: string;
+    version: string;
     icons?: Array<{ src: string }>;
   };
   _meta: {
@@ -37,6 +38,7 @@ export default function ServersPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [hasMoreData, setHasMoreData] = useState(true);
 
   const fetchServers = async (reset = false) => {
     if (reset) {
@@ -47,7 +49,11 @@ export default function ServersPage() {
       setLoadingMore(true);
     }
 
-    const response = await fetch(`/api/servers`);
+    let url = '/api/servers';
+    if (!reset && nextCursor) {
+      url += `?cursor=${encodeURIComponent(nextCursor)}`;
+    }
+    const response = await fetch(url);
     const data: ServersResponse = await response.json();
 
     if (reset) {
@@ -58,6 +64,7 @@ export default function ServersPage() {
     }
 
     setNextCursor(data.metadata.nextCursor);
+    setHasMoreData(data.metadata.nextCursor !== null);
     setLoading(false);
     setLoadingMore(false);
   };
@@ -134,16 +141,20 @@ export default function ServersPage() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {servers.map((item) => (
-                  <Card key={item.server.name}>
+                  <Card key={`${item.server.name}-${item.server.version}`}>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        {item.server.icons?.[0] && (
-                          <img
-                            src={item.server.icons[0].src}
-                            alt=""
-                            className="w-6 h-6"
-                          />
-                        )}
+                        <img
+                          src={item.server.icons?.[0]?.src || "/mcp.png"}
+                          alt=""
+                          className="w-6 h-6"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            if (target.src !== "/mcp.png") {
+                              target.src = "/mcp.png";
+                            }
+                          }}
+                        />
                         {item.server.title || item.server.name}
                       </CardTitle>
                       <CardDescription>
@@ -167,14 +178,14 @@ export default function ServersPage() {
               </div>
 
               {/* Load More Button */}
-              {nextCursor && (
+              {servers.length > 0 && (
                 <div className="text-center py-8">
                   <Button
                     onClick={() => fetchServers(false)}
-                    disabled={loadingMore}
+                    disabled={loadingMore || !nextCursor}
                     variant="outline"
                   >
-                    {loadingMore ? "Loading..." : "Load More"}
+                    {loadingMore ? "Loading..." : nextCursor ? "Load More" : "All Servers Loaded"}
                   </Button>
                 </div>
               )}

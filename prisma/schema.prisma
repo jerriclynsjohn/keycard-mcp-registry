@@ -24,7 +24,8 @@ model User {
 }
 model McpServer {
   id        String   @id @default(ulid()) // ULID for internal use
-  name      String   @unique // Server name like "ai.smithery/222wcnmibilistalkermcp" - exposed identifier
+  name      String   // Server name like "ai.smithery/222wcnmibilistalkermcp" - exposed identifier
+  version   String   @default("1.0.0") // Server version
   description String?
   category    String?
   maintainerName String?
@@ -44,6 +45,8 @@ model McpServer {
   userId    String?
   user      User?     @relation(fields: [userId], references: [id])
   reviews   Review[]
+
+  @@unique([name, version]) // Unique constraint on name + version combination
 }
 model Review {
   id        String   @id @default(ulid()) // ULID

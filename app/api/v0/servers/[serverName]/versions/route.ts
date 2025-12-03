@@ -1,34 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server/db";
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const cursor = searchParams.get("cursor");
-  const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<{ serverName: string }> }
+) {
+  const params = await context.params;
+  const serverName = decodeURIComponent(params.serverName);
 
+  const servers = await prisma.mcpServer.findMany({
+    where: { name: serverName },
+    orderBy: { updatedAt: "desc" }, // Newest first as per spec
+  });
 
+  if (servers.length === 0) {
+    return NextResponse.json({ error: "Server not found" }, { status: 404 });
+  }
 
-  // Get latest version for each server name
-  const latestServers = await prisma.$queryRaw`
-    SELECT DISTINCT ON (name) * FROM "McpServer"
-    ORDER BY name, "updatedAt" DESC
-  `;
-
-  const allServers = Array.isArray(latestServers) ? latestServers : [];
-  const totalCount = allServers.length;
-
-  // Simple pagination using array slicing
-  const startIndex = cursor ? parseInt(cursor, 10) || 0 : 0;
-  const endIndex = startIndex + limit;
-  const serversToReturn = allServers.slice(startIndex, endIndex);
-  const nextCursor = endIndex < allServers.length ? endIndex.toString() : null;
-
-  const transformedServers = serversToReturn.map((server) => ({
+  const transformedServers = servers.map((server) => ({
     server: {
       name: server.name,
       description: server.description || "",
       title: server.category || undefined,
-      version: server.version, // actual version from database
+      version: server.version,
       websiteUrl: server.documentationUrl || server.maintainerUrl || undefined,
       icons: server.iconUrl ? [{ src: server.iconUrl }] : undefined,
       remotes: server.mcpUrl ? [{ type: "streamable-http", url: server.mcpUrl }] : undefined,
@@ -48,17 +42,12 @@ export async function GET(request: NextRequest) {
         status: server.status === "approved" ? "active" : "deprecated",
         publishedAt: server.createdAt.toISOString(),
         updatedAt: server.updatedAt.toISOString(),
-        isLatest: true,
+        isLatest: servers[0].id === server.id, // First one is latest
       },
     },
   }));
 
   return NextResponse.json({
     servers: transformedServers,
-    metadata: {
-      nextCursor,
-      count: serversToReturn.length,
-      totalCount,
-    },
   });
 }

@@ -66,6 +66,7 @@ export async function syncFromOfficialRegistry() {
       // Map to our schema
       const mapped = {
         name: server.name,
+        version: server.version || "1.0.0",
         description: server.description,
         category: server.title,
         maintainerName: server._meta?.["io.modelcontextprotocol.registry/publisher-provided"]?.maintainerName,
@@ -81,12 +82,24 @@ export async function syncFromOfficialRegistry() {
         updatedAt: new Date(meta.updatedAt),
       };
 
-      // Upsert
-      await prisma.mcpServer.upsert({
-        where: { name: server.name },
-        update: mapped,
-        create: mapped,
+      // Upsert - find existing or create new
+      const existing = await prisma.mcpServer.findFirst({
+        where: {
+          name: server.name,
+          version: server.version || "1.0.0"
+        }
       });
+
+      if (existing) {
+        await prisma.mcpServer.update({
+          where: { id: existing.id },
+          data: mapped,
+        });
+      } else {
+        await prisma.mcpServer.create({
+          data: mapped,
+        });
+      }
     }
 
     cursor = data.metadata.nextCursor;

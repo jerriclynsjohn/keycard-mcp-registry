@@ -21,8 +21,9 @@ export async function POST(
     return NextResponse.json({ error: "Invalid rating" }, { status: 400 });
   }
 
-  const server = await prisma.mcpServer.findUnique({
+  const server = await prisma.mcpServer.findFirst({
     where: { name: id },
+    orderBy: { updatedAt: "desc" }, // Get latest version
   });
 
   if (!server) {
