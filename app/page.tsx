@@ -147,11 +147,11 @@ export default async function Home({
            </div>
            <div className="flex items-center gap-4">
              <HeaderSearch />
-             <Button variant="outline" size="sm" className="hidden md:flex" asChild>
-               <a href="https://keycard.ai" target="_blank" rel="noopener noreferrer">
-                 Get Early Access
-               </a>
-             </Button>
+              <Button size="sm" className="hidden md:flex" asChild>
+                <a href="https://keycard.ai" target="_blank" rel="noopener noreferrer">
+                  Get Early Access
+                </a>
+              </Button>
              <UserProfile />
            </div>
         </div>
@@ -162,7 +162,7 @@ export default async function Home({
         <div className="max-w-6xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-6xl font-sans font-normal mb-4 text-foreground uppercase">
               MCP Server Registry
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
