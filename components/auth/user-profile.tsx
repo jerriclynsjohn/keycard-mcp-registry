@@ -75,7 +75,7 @@ export function UserProfile() {
 
 interface ReviewDialogProps {
   serverId: string;
-  onReviewSubmitted: () => void;
+  onReviewSubmitted?: () => void;
 }
 
 export function ReviewDialog({ serverId, onReviewSubmitted }: ReviewDialogProps) {
@@ -126,7 +126,11 @@ export function ReviewDialog({ serverId, onReviewSubmitted }: ReviewDialogProps)
         setIsOpen(false);
         setRating(5);
         setComment("");
-        onReviewSubmitted();
+        if (onReviewSubmitted) {
+          onReviewSubmitted();
+        } else {
+          window.location.reload();
+        }
       } else {
         console.error("Failed to submit review");
       }

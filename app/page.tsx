@@ -1,5 +1,21 @@
 import type { Metadata } from "next";
-import ServersPage from "./servers-page";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { KeycardLogo } from "@/components/keycard-logo";
+import { UserProfile } from "@/components/auth/user-profile";
+import { Globe, Package, Cpu, ArrowRight } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { prisma } from "@/lib/server/db";
 
 export const metadata: Metadata = {
   title: "Keycard MCP Registry - Discover MCP Servers",
@@ -12,6 +28,273 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Home() {
-  return <ServersPage />;
+interface Server {
+  server: {
+    name: string;
+    description: string;
+    title?: string;
+    version: string;
+    icons?: Array<{ src: string }>;
+    remotes?: Array<{ type: string; url: string }>;
+    packages?: Array<any>;
+  };
+  _meta: {
+    "io.modelcontextprotocol.registry/official": {
+      status: string;
+      publishedAt: string;
+    };
+  };
+}
+
+async function getServers(page: number, limit: number = 36) {
+  const allServers = await prisma.mcpServer.findMany({
+    include: {
+      packages: true,
+      remotes: true,
+    },
+    orderBy: [
+      { name: 'asc' },
+      { updatedAt: 'desc' }
+    ]
+  });
+
+  const latestServersMap = new Map();
+  for (const server of allServers) {
+    if (!latestServersMap.has(server.name)) {
+      latestServersMap.set(server.name, server);
+    }
+  }
+
+  const latestServers = Array.from(latestServersMap.values());
+  const totalCount = latestServers.length;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+  const serversToReturn = latestServers.slice(startIndex, endIndex);
+
+  const transformedServers: Server[] = serversToReturn.map((server: any) => ({
+    server: {
+      name: server.name,
+      description: server.description || "",
+      title: server.category || undefined,
+      version: server.version,
+      websiteUrl: server.documentationUrl || server.maintainerUrl || undefined,
+      icons: server.iconUrl ? [{ src: server.iconUrl }] : undefined,
+      remotes: server.remotes?.length > 0 ? server.remotes.map((r: any) => ({ type: r.type, url: r.url })) : (server.mcpUrl ? [{ type: "streamable-http", url: server.mcpUrl }] : undefined),
+      packages: server.packages?.length > 0 ? server.packages.map((p: any) => ({ transport: p.transport })) : undefined,
+    },
+    _meta: {
+      "io.modelcontextprotocol.registry/official": {
+        status: server.status === "approved" ? "active" : "deprecated",
+        publishedAt: server.createdAt.toISOString(),
+      },
+    },
+  }));
+
+  return { servers: transformedServers, totalCount, totalPages, currentPage: page };
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const params = await searchParams;
+  const page = parseInt(params.page || '1', 10);
+  const { servers, totalCount, totalPages, currentPage } = await getServers(page);
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border/40">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center">
+              <KeycardLogo />
+            </Link>
+            <nav className="hidden md:flex items-center gap-6">
+              <Link href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                MCP Registry
+              </Link>
+            </nav>
+          </div>
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" className="hidden md:flex" asChild>
+              <a href="https://keycard.ai" target="_blank" rel="noopener noreferrer">
+                Get Early Access
+              </a>
+            </Button>
+            <UserProfile />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-6xl mx-auto">
+          {/* Hero Section */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              MCP Server Registry
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Discover and integrate Model Context Protocol servers for your AI applications
+            </p>
+          </div>
+
+          {/* Stats */}
+          <div className="flex justify-center gap-8 mb-12">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary">{totalCount}</div>
+              <div className="text-sm text-muted-foreground">MCP Servers</div>
+            </div>
+          </div>
+
+          {/* Servers Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {servers.map((item) => (
+              <Card key={`${item.server.name}-${item.server.version}`}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <img
+                      src={item.server.icons?.[0]?.src || "/mcp.png"}
+                      alt=""
+                      className="w-6 h-6"
+                    />
+                    {item.server.title || item.server.name}
+                  </CardTitle>
+                  <CardDescription>
+                    {item.server.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {/* Status and Transport Badges */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary">
+                        {item._meta["io.modelcontextprotocol.registry/official"].status}
+                      </Badge>
+                      {(() => {
+                        const transportTypes = new Set<string>();
+                        
+                        item.server.remotes?.forEach(remote => {
+                          transportTypes.add(remote.type);
+                        });
+                        
+                        item.server.packages?.forEach(pkg => {
+                          transportTypes.add(pkg.transport?.type || 'stdio');
+                        });
+                        
+                        return Array.from(transportTypes).map(type => (
+                          <Badge key={type} variant="outline" className="flex items-center gap-1">
+                            {type === 'stdio' ? <Package className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                            {type}
+                          </Badge>
+                        ));
+                      })()}
+                    </div>
+
+                    {/* Version and Date */}
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Cpu className="h-3 w-3" />
+                        v{item.server.version}
+                      </span>
+                      <span>
+                        {new Date(item._meta["io.modelcontextprotocol.registry/official"].publishedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <Button asChild className="w-full" variant="outline">
+                      <Link href={`/servers/${encodeURIComponent(item.server.name)}`}>
+                        View Details
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    href={currentPage > 1 ? `/?page=${currentPage - 1}` : undefined}
+                    aria-disabled={currentPage <= 1}
+                    className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+
+                {/* First page */}
+                {currentPage > 2 && (
+                  <PaginationItem>
+                    <PaginationLink href="/?page=1">1</PaginationLink>
+                  </PaginationItem>
+                )}
+
+                {/* Left ellipsis */}
+                {currentPage > 3 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+
+                {/* Page numbers around current */}
+                {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (currentPage === 1) {
+                    pageNum = i + 1;
+                  } else if (currentPage === totalPages) {
+                    pageNum = totalPages - 2 + i;
+                  } else {
+                    pageNum = currentPage - 1 + i;
+                  }
+                  
+                  if (pageNum < 1 || pageNum > totalPages) return null;
+                  
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink 
+                        href={`/?page=${pageNum}`}
+                        isActive={pageNum === currentPage}
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+
+                {/* Right ellipsis */}
+                {currentPage < totalPages - 2 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+
+                {/* Last page */}
+                {currentPage < totalPages - 1 && (
+                  <PaginationItem>
+                    <PaginationLink href={`/?page=${totalPages}`}>{totalPages}</PaginationLink>
+                  </PaginationItem>
+                )}
+
+                <PaginationItem>
+                  <PaginationNext 
+                    href={currentPage < totalPages ? `/?page=${currentPage + 1}` : undefined}
+                    aria-disabled={currentPage >= totalPages}
+                    className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
