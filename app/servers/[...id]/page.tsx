@@ -91,7 +91,7 @@ async function getServerByName(name: string) {
           isSecret: h.isSecret,
           default: h.default || undefined,
           format: h.format || undefined,
-          choices: h.choices || undefined,
+          choices: (h.choices as string[] | undefined) || undefined,
         })),
       })),
       _meta: {
