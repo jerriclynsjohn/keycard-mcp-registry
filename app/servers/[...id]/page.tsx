@@ -229,7 +229,7 @@ export default async function ServerDetailsPage({
                         });
                         
                         server.packages?.forEach(pkg => {
-                          const transport = typeof pkg.transport === 'object' ? pkg.transport.type : pkg.transport;
+                          const transport = pkg.transport && typeof pkg.transport === 'object' ? pkg.transport.type : pkg.transport;
                           transportTypes.add(transport || 'stdio');
                         });
                         
