@@ -197,67 +197,97 @@ export default async function Home({
              </div>
            )}
 
-            {/* Servers Grid */}
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-             {servers.map((item) => (
-               <Link key={`${item.server.name}-${item.server.version}`} href={`/servers/${encodeURIComponent(item.server.name)}`}>
-                 <Card className="h-full cursor-pointer transition-all hover:shadow-md hover:border-primary/50">
-                   <CardHeader>
-                     <CardTitle className="flex items-center gap-2">
-                       <img
-                         src={item.server.icons?.[0]?.src || "/mcp.png"}
-                         alt=""
-                         className="w-6 h-6"
-                       />
-                       {item.server.title || item.server.name}
-                     </CardTitle>
-                     <CardDescription>
-                       {item.server.description}
-                     </CardDescription>
-                   </CardHeader>
-                   <CardContent>
-                     <div className="space-y-3">
-                       {/* Status and Transport Badges */}
-                       <div className="flex flex-wrap items-center gap-2">
-                         <Badge variant="secondary">
-                           {item._meta["io.modelcontextprotocol.registry/official"].status}
-                         </Badge>
-                         {(() => {
-                           const transportTypes = new Set<string>();
+             {/* Servers Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {servers.map((item) => (
+                <Link key={`${item.server.name}-${item.server.version}`} href={`/servers/${encodeURIComponent(item.server.name)}`}>
+                  <Card className="h-full cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-0.5 group flex flex-col">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start mb-2">
+                        <div className="flex items-center gap-3 w-full">
+                          <img
+                            src={item.server.icons?.[0]?.src || "/mcp.png"}
+                            alt=""
+                            className="w-8 h-8 rounded-md border border-border/50"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg font-mono font-medium text-foreground group-hover:text-primary transition-colors w-full">
+                              {item.server.title || item.server.name}
+                            </CardTitle>
+                            <div className="flex items-center justify-between mt-1 w-full">
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant={item._meta["io.modelcontextprotocol.registry/official"].status === "active" ? "default" : "secondary"}
+                                  className={`text-xs px-2 py-0.5 ${
+                                    item._meta["io.modelcontextprotocol.registry/official"].status === "active"
+                                      ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                      : "bg-orange-500/10 text-orange-400 border-orange-500/20"
+                                  }`}
+                                >
+                                  {item._meta["io.modelcontextprotocol.registry/official"].status}
+                                </Badge>
+                                <span className="text-xs font-mono text-muted-foreground">
+                                  v{item.server.version}
+                                </span>
+                              </div>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {new Date(item._meta["io.modelcontextprotocol.registry/official"].publishedAt).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <CardDescription className="text-sm leading-relaxed flex-1">
+                        {item.server.description}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0 mt-auto">
+                      {/* Transport Types */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(() => {
+                          const transportTypes = new Set<string>();
 
-                           item.server.remotes?.forEach(remote => {
-                             transportTypes.add(remote.type);
-                           });
+                          item.server.remotes?.forEach(remote => {
+                            transportTypes.add(remote.type);
+                          });
 
-                           item.server.packages?.forEach(pkg => {
-                             transportTypes.add(pkg.transport?.type || 'stdio');
-                           });
+                          item.server.packages?.forEach(pkg => {
+                            transportTypes.add(pkg.transport?.type || 'stdio');
+                          });
 
-                           return Array.from(transportTypes).map(type => (
-                             <Badge key={type} variant="outline" className="flex items-center gap-1">
-                               {type === 'stdio' ? <Package className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-                               {type}
-                             </Badge>
-                           ));
-                         })()}
-                       </div>
-
-                       {/* Version and Date */}
-                       <div className="flex items-center justify-between text-xs text-muted-foreground">
-                         <span className="flex items-center gap-1">
-                           <Cpu className="h-3 w-3" />
-                           v{item.server.version}
-                         </span>
-                         <span>
-                           {new Date(item._meta["io.modelcontextprotocol.registry/official"].publishedAt).toLocaleDateString()}
-                         </span>
-                       </div>
-                     </div>
-                   </CardContent>
-                 </Card>
-               </Link>
-             ))}
-          </div>
+                          return Array.from(transportTypes).map(type => (
+                            <Badge
+                              key={type}
+                              variant="outline"
+                              className={`flex items-center gap-1.5 text-xs px-2.5 py-1 font-mono border-2 transition-colors ${
+                                type === 'stdio'
+                                  ? 'border-blue-500/30 bg-blue-500/5 text-blue-300 hover:bg-blue-500/10'
+                                  : type === 'streamable-http'
+                                  ? 'border-green-500/30 bg-green-500/5 text-green-300 hover:bg-green-500/10'
+                                  : 'border-purple-500/30 bg-purple-500/5 text-purple-300 hover:bg-purple-500/10'
+                              }`}
+                            >
+                              {type === 'stdio' ? (
+                                <Package className="h-3.5 w-3.5" />
+                              ) : type === 'streamable-http' ? (
+                                <Globe className="h-3.5 w-3.5" />
+                              ) : (
+                                <Cpu className="h-3.5 w-3.5" />
+                              )}
+                              {type}
+                            </Badge>
+                          ));
+                        })()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+           </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
