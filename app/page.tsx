@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { KeycardLogo } from "@/components/keycard-logo";
 import { UserProfile } from "@/components/auth/user-profile";
 import { HeaderSearch } from "@/components/HeaderSearch";
-import { Globe, Package, Cpu, ArrowRight } from "lucide-react";
+import { Globe, Package, Cpu } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -197,71 +197,66 @@ export default async function Home({
              </div>
            )}
 
-           {/* Servers Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {servers.map((item) => (
-              <Card key={`${item.server.name}-${item.server.version}`}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <img
-                      src={item.server.icons?.[0]?.src || "/mcp.png"}
-                      alt=""
-                      className="w-6 h-6"
-                    />
-                    {item.server.title || item.server.name}
-                  </CardTitle>
-                  <CardDescription>
-                    {item.server.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {/* Status and Transport Badges */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary">
-                        {item._meta["io.modelcontextprotocol.registry/official"].status}
-                      </Badge>
-                      {(() => {
-                        const transportTypes = new Set<string>();
-                        
-                        item.server.remotes?.forEach(remote => {
-                          transportTypes.add(remote.type);
-                        });
-                        
-                        item.server.packages?.forEach(pkg => {
-                          transportTypes.add(pkg.transport?.type || 'stdio');
-                        });
-                        
-                        return Array.from(transportTypes).map(type => (
-                          <Badge key={type} variant="outline" className="flex items-center gap-1">
-                            {type === 'stdio' ? <Package className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-                            {type}
-                          </Badge>
-                        ));
-                      })()}
-                    </div>
+            {/* Servers Grid */}
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+             {servers.map((item) => (
+               <Link key={`${item.server.name}-${item.server.version}`} href={`/servers/${encodeURIComponent(item.server.name)}`}>
+                 <Card className="h-full cursor-pointer transition-all hover:shadow-md hover:border-primary/50">
+                   <CardHeader>
+                     <CardTitle className="flex items-center gap-2">
+                       <img
+                         src={item.server.icons?.[0]?.src || "/mcp.png"}
+                         alt=""
+                         className="w-6 h-6"
+                       />
+                       {item.server.title || item.server.name}
+                     </CardTitle>
+                     <CardDescription>
+                       {item.server.description}
+                     </CardDescription>
+                   </CardHeader>
+                   <CardContent>
+                     <div className="space-y-3">
+                       {/* Status and Transport Badges */}
+                       <div className="flex flex-wrap items-center gap-2">
+                         <Badge variant="secondary">
+                           {item._meta["io.modelcontextprotocol.registry/official"].status}
+                         </Badge>
+                         {(() => {
+                           const transportTypes = new Set<string>();
 
-                    {/* Version and Date */}
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Cpu className="h-3 w-3" />
-                        v{item.server.version}
-                      </span>
-                      <span>
-                        {new Date(item._meta["io.modelcontextprotocol.registry/official"].publishedAt).toLocaleDateString()}
-                      </span>
-                    </div>
+                           item.server.remotes?.forEach(remote => {
+                             transportTypes.add(remote.type);
+                           });
 
-                    <Button asChild className="w-full" variant="outline">
-                      <Link href={`/servers/${encodeURIComponent(item.server.name)}`}>
-                        View Details
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                           item.server.packages?.forEach(pkg => {
+                             transportTypes.add(pkg.transport?.type || 'stdio');
+                           });
+
+                           return Array.from(transportTypes).map(type => (
+                             <Badge key={type} variant="outline" className="flex items-center gap-1">
+                               {type === 'stdio' ? <Package className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                               {type}
+                             </Badge>
+                           ));
+                         })()}
+                       </div>
+
+                       {/* Version and Date */}
+                       <div className="flex items-center justify-between text-xs text-muted-foreground">
+                         <span className="flex items-center gap-1">
+                           <Cpu className="h-3 w-3" />
+                           v{item.server.version}
+                         </span>
+                         <span>
+                           {new Date(item._meta["io.modelcontextprotocol.registry/official"].publishedAt).toLocaleDateString()}
+                         </span>
+                       </div>
+                     </div>
+                   </CardContent>
+                 </Card>
+               </Link>
+             ))}
           </div>
 
           {/* Pagination */}
