@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Star, ArrowLeft, Globe, Code, History, Package } from "lucide-react";
 import { KeycardLogo } from "@/components/keycard-logo";
 import { ReviewDialog, UserProfile } from "@/components/auth/user-profile";
+import { HeaderSearch } from "@/components/HeaderSearch";
 import { InstallationInstructions } from "@/components/installation/InstallationInstructions";
 import { VersionsTab } from "@/components/VersionsTab";
 import { PackageDetails } from "@/components/PackageDetails";
@@ -128,10 +129,13 @@ async function getServerByName(name: string) {
 
 export default async function ServerDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string[] }>;
+  searchParams: Promise<{ search?: string }>;
 }) {
   const { id } = await params;
+  const { search } = await searchParams;
   const serverName = Array.isArray(id) ? id.join("/") : id;
   const serverDetails = await getServerByName(decodeURIComponent(serverName));
 
@@ -162,37 +166,53 @@ export default async function ServerDetailsPage({
       {/* Header */}
       <header className="border-b border-border/40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center">
-              <KeycardLogo />
-            </Link>
-            <nav className="hidden md:flex items-center gap-6">
-              <Link href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                MCP Registry
-              </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" className="hidden md:flex" asChild>
-              <a href="https://keycard.ai" target="_blank" rel="noopener noreferrer">
-                Get Early Access
-              </a>
-            </Button>
-            <UserProfile />
-          </div>
+           <div className="flex items-center gap-8">
+             <Link href="/" className="flex items-center">
+               <KeycardLogo />
+             </Link>
+             <nav className="hidden md:flex items-center gap-6">
+               <Link href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                 MCP Registry
+               </Link>
+             </nav>
+           </div>
+           <div className="flex items-center gap-4">
+             <HeaderSearch />
+             <Button variant="outline" size="sm" className="hidden md:flex" asChild>
+               <a href="https://keycard.ai" target="_blank" rel="noopener noreferrer">
+                 Get Early Access
+               </a>
+             </Button>
+             <UserProfile />
+           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Back Button */}
-        <div className="mb-6">
-          <Button variant="ghost" asChild className="mb-4">
-            <Link href="/" className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Servers
-            </Link>
-          </Button>
-        </div>
+       <div className="container mx-auto px-4 py-8">
+         {/* Breadcrumb Navigation */}
+         <div className="mb-6">
+           <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
+             <Link href={search ? `/?search=${encodeURIComponent(search)}` : "/"} className="hover:text-foreground">
+               Registry
+             </Link>
+             {search && (
+               <>
+                 <span>/</span>
+                 <Link href={`/?search=${encodeURIComponent(search)}`} className="hover:text-foreground">
+                   Search: "{search}"
+                 </Link>
+               </>
+             )}
+             <span>/</span>
+              <span className="text-foreground font-medium">{decodeURIComponent(serverName)}</span>
+           </nav>
+           <Button variant="ghost" asChild>
+             <Link href={search ? `/?search=${encodeURIComponent(search)}` : "/"} className="flex items-center gap-2">
+               <ArrowLeft className="w-4 h-4" />
+               {search ? "Back to Search Results" : "Back to Servers"}
+             </Link>
+           </Button>
+         </div>
 
         {/* Server Details */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

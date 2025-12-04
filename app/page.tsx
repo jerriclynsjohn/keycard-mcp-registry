@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { KeycardLogo } from "@/components/keycard-logo";
 import { UserProfile } from "@/components/auth/user-profile";
+import { HeaderSearch } from "@/components/HeaderSearch";
 import { Globe, Package, Cpu, ArrowRight } from "lucide-react";
 import {
   Pagination,
@@ -46,32 +47,56 @@ interface Server {
   };
 }
 
-async function getServers(page: number, limit: number = 36) {
-  const allServers = await prisma.mcpServer.findMany({
-    include: {
-      packages: true,
-      remotes: true,
-    },
-    orderBy: [
-      { name: 'asc' },
-      { updatedAt: 'desc' }
-    ]
-  });
+async function getServers(page: number, limit: number = 36, search?: string) {
+  let allServers;
 
-  const latestServersMap = new Map();
-  for (const server of allServers) {
-    if (!latestServersMap.has(server.name)) {
-      latestServersMap.set(server.name, server);
+  if (search?.trim()) {
+    // Use raw SQL for full-text search when searching
+    const searchQuery = `
+      SELECT DISTINCT ON (s.name) s.*, p.transport as package_transport, r.type as remote_type, r.url as remote_url
+      FROM "McpServer" s
+      LEFT JOIN "Package" p ON s.id = p."serverId"
+      LEFT JOIN "Remote" r ON s.id = r."serverId"
+      WHERE to_tsvector('english',
+        coalesce(s.name, '') || ' ' ||
+        coalesce(s.description, '') || ' ' ||
+        coalesce(s.title, '') || ' ' ||
+        coalesce(s."maintainerName", '') || ' ' ||
+        coalesce(s."aiSummary", '')
+      ) @@ plainto_tsquery('english', $1)
+      ORDER BY s.name, s."updatedAt" DESC
+    `;
+
+    allServers = await prisma.$queryRawUnsafe(searchQuery, [search.trim()]);
+  } else {
+    // Regular query when not searching
+    allServers = await prisma.mcpServer.findMany({
+      include: {
+        packages: true,
+        remotes: true,
+      },
+      orderBy: [
+        { name: 'asc' },
+        { updatedAt: 'desc' }
+      ]
+    });
+
+    // Group by name and get latest for each when not searching
+    const latestServersMap = new Map();
+    for (const server of allServers) {
+      if (!latestServersMap.has(server.name)) {
+        latestServersMap.set(server.name, server);
+      }
     }
+    allServers = Array.from(latestServersMap.values());
   }
 
-  const latestServers = Array.from(latestServersMap.values());
-  const totalCount = latestServers.length;
+  const totalCount = Array.isArray(allServers) ? allServers.length : 0;
   const totalPages = Math.ceil(totalCount / limit);
 
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
-  const serversToReturn = latestServers.slice(startIndex, endIndex);
+  const serversToReturn = Array.isArray(allServers) ? allServers.slice(startIndex, endIndex) : [];
 
   const transformedServers: Server[] = serversToReturn.map((server: any) => ({
     server: {
@@ -98,35 +123,37 @@ async function getServers(page: number, limit: number = 36) {
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; search?: string }>;
 }) {
   const params = await searchParams;
   const page = parseInt(params.page || '1', 10);
-  const { servers, totalCount, totalPages, currentPage } = await getServers(page);
+  const search = params.search;
+  const { servers, totalCount, totalPages, currentPage } = await getServers(page, 36, search);
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center">
-              <KeycardLogo />
-            </Link>
-            <nav className="hidden md:flex items-center gap-6">
-              <Link href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                MCP Registry
-              </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" className="hidden md:flex" asChild>
-              <a href="https://keycard.ai" target="_blank" rel="noopener noreferrer">
-                Get Early Access
-              </a>
-            </Button>
-            <UserProfile />
-          </div>
+           <div className="flex items-center gap-8">
+             <Link href="/" className="flex items-center">
+               <KeycardLogo />
+             </Link>
+             <nav className="hidden md:flex items-center gap-6">
+               <Link href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                 MCP Registry
+               </Link>
+             </nav>
+           </div>
+           <div className="flex items-center gap-4">
+             <HeaderSearch />
+             <Button variant="outline" size="sm" className="hidden md:flex" asChild>
+               <a href="https://keycard.ai" target="_blank" rel="noopener noreferrer">
+                 Get Early Access
+               </a>
+             </Button>
+             <UserProfile />
+           </div>
         </div>
       </header>
 
@@ -143,15 +170,34 @@ export default async function Home({
             </p>
           </div>
 
-          {/* Stats */}
-          <div className="flex justify-center gap-8 mb-12">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary">{totalCount}</div>
-              <div className="text-sm text-muted-foreground">MCP Servers</div>
-            </div>
-          </div>
+           {/* Stats */}
+           <div className="flex justify-center gap-8 mb-12">
+             <div className="text-center">
+               <div className="text-3xl font-bold text-primary">{totalCount}</div>
+               <div className="text-sm text-muted-foreground">MCP Servers</div>
+             </div>
+           </div>
 
-          {/* Servers Grid */}
+           {/* Search Results Header */}
+           {search && (
+             <div className="flex items-center justify-between mb-6">
+               <div className="flex items-center gap-4">
+                 <h2 className="text-lg font-semibold">
+                   Search results for "{search}"
+                 </h2>
+                 <Badge variant="secondary">
+                   {totalCount} result{totalCount !== 1 ? 's' : ''}
+                 </Badge>
+               </div>
+               <Button variant="outline" size="sm" asChild>
+                 <Link href="/">
+                   Clear search
+                 </Link>
+               </Button>
+             </div>
+           )}
+
+           {/* Servers Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {servers.map((item) => (
               <Card key={`${item.server.name}-${item.server.version}`}>

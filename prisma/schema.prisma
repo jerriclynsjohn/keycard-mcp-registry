@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
 }
 datasource db {
   provider = "postgresql"
@@ -57,6 +58,9 @@ model McpServer {
   officialMeta Json?  // official registry metadata
 
   // @@unique([name, version]) // Unique constraint on name + version combination - handled in app logic
+
+  // Full-text search index for server search functionality
+  @@index([name, description, title, maintainerName, aiSummary], name: "search_idx")
 }
 
 model Repository {
