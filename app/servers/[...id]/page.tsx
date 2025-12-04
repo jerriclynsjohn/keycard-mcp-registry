@@ -68,9 +68,9 @@ async function getServerByName(name: string) {
         registryBaseUrl: p.registryBaseUrl || "",
         identifier: p.identifier,
         version: p.version,
-        transport: p.transport,
+        transport: p.transport as any,
         runtimeHint: p.runtimeHint || undefined,
-        packageArguments: p.packageArguments || undefined,
+        packageArguments: (p.packageArguments as any[] | undefined) || undefined,
         environmentVariables: p.environmentVariables?.map(e => ({
           name: e.name,
           description: e.description || undefined,
@@ -78,7 +78,7 @@ async function getServerByName(name: string) {
           isSecret: e.isSecret,
           default: e.default || undefined,
           format: e.format || undefined,
-          choices: e.choices || undefined,
+          choices: (e.choices as string[] | undefined) || undefined,
         })),
       })),
       remotes: server.remotes?.map(r => ({
